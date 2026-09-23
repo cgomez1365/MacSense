@@ -1,0 +1,51 @@
+/* The printed report: light pages, black text, status words beside every colour. One CSS px = one PDF point. */
+:root {
+  --ink: #16181d;
+  --ink-2: #454a55;
+  --ink-3: #6b7280;
+  --rule: #e3e5ea;
+  --soft: #f5f6f8;
+  --good: #0a7d0a;
+  --warning: #a86b00;
+  --critical: #c22f2f;
+  --info: #5b6472;
+  --locked: #5b6472;
+  --brand: #e5173c;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: #fff; }
+body { width: 612px; color: var(--ink); font: 9.5px/1.45 system-ui, -apple-system, "Helvetica Neue", sans-serif; -webkit-font-smoothing: antialiased; }
+p, h1, h2, h3 { margin: 0; }
+
+.page { width: 612px; height: 792px; padding: 36px 40px 30px; position: relative; overflow: hidden; background: #fff; display: flex; flex-direction: column; }
+.page-body { flex: 1; min-height: 0; }
+#measure { position: absolute; left: -10000px; top: 0; visibility: hidden; }
+.page-footer { display: flex; justify-content: space-between; gap: 12px; padding-top: 8px; border-top: 1px solid var(--rule); color: var(--ink-3); font-size: 8px; }
+
+.report-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding-bottom: 12px; border-bottom: 2px solid var(--ink); margin-bottom: 12px; }
+.brand { display: flex; align-items: center; gap: 7px; font-weight: 800; letter-spacing: 0.18em; font-size: 9px; color: var(--ink-2); margin-bottom: 6px; }
+.brand i { width: 11px; height: 12px; background: var(--brand); clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); display: inline-block; }
+.report-head h1 { font-size: 19px; font-weight: 700; letter-spacing: -0.01em; }
+.report-head .machine { margin-top: 3px; font-size: 10px; color: var(--ink-2); }
+.facts { text-align: right; font-size: 8.5px; color: var(--ink-2); line-height: 1.6; }
+.facts strong { color: var(--ink); font-weight: 650; }
+
+.summary { display: flex; gap: 8px; margin-bottom: 6px; }
+.summary div { flex: 1; border: 1px solid var(--rule); border-radius: 6px; padding: 7px 9px; background: var(--soft); }
+.summary strong { display: block; font-size: 16px; font-weight: 700; }
+.summary span { color: var(--ink-2); font-size: 8.5px; }
+
+.section-title { font-size: 11px; font-weight: 700; padding: 9px 0 5px; border-bottom: 1px solid var(--ink); }
+.row { display: grid; grid-template-columns: 92px 150px 1fr; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--rule); break-inside: avoid; }
+.status { font-weight: 700; font-size: 8.5px; display: flex; align-items: flex-start; gap: 5px; }
+.status i { width: 7px; height: 7px; border-radius: 50%; margin-top: 3px; flex: none; }
+.status.good { color: var(--good); } .status.good i { background: var(--good); }
+.status.warning { color: var(--warning); } .status.warning i { background: var(--warning); }
+.status.critical { color: var(--critical); } .status.critical i { background: var(--critical); }
+.status.info, .status.locked { color: var(--info); } .status.info i, .status.locked i { background: var(--info); }
+.item-title { font-weight: 600; }
+.item-value { font-weight: 650; }
+.item-detail { color: var(--ink-2); white-space: pre-line; margin-top: 2px; }
+.item-fix { margin-top: 3px; padding-left: 8px; border-left: 2px solid var(--warning); color: var(--ink); }
+.row.critical .item-fix { border-left-color: var(--critical); }
+.privacy { margin-bottom: 10px; color: var(--ink-3); font-size: 8px; }

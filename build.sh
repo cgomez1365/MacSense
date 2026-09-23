@@ -2,17 +2,28 @@
 # Builds MacSense.app, one universal binary for Intel and Apple silicon Macs.
 #   ./build.sh                      build into build/MacSense.app
 #   ./build.sh --install            also put it on the Desktop as ~/Desktop/MacSense.app
+#   ./build.sh --pkg                also make build/MacSense-<version>.pkg, which installs into
+#                                   /Applications (upload it to Jamf for Self Service)
 #   ARCHS=x86_64 ./build.sh         one architecture only: faster while iterating
 # Needs only the Xcode Command Line Tools (swiftc, clang). No Xcode project, no dependencies.
 set -euo pipefail
 cd "$(dirname "$0")"
 
 ARCHS="${ARCHS:-x86_64 arm64}"
+INSTALL=0
+PKG=0
+for ARG in "$@"; do
+  case "$ARG" in
+    --install) INSTALL=1 ;;
+    --pkg) PKG=1 ;;
+    *) echo "unknown option: $ARG (use --install and/or --pkg)" >&2; exit 2 ;;
+  esac
+done
 APP="build/MacSense.app"
 BUNDLE_ID="com.brokengearindustries.macsense"
 MIN_MACOS="12.0"
 CACHE=".cache"   # compiler module cache; kept between builds so rebuilds are quick
-FRAMEWORKS=(-framework AppKit -framework WebKit -framework IOKit -framework DiskArbitration -framework SystemConfiguration)
+FRAMEWORKS=(-framework AppKit -framework WebKit -framework IOKit -framework DiskArbitration -framework SystemConfiguration -framework PDFKit)
 
 rm -rf build
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" build/obj "$CACHE"
@@ -40,7 +51,14 @@ iconutil -c icns build/obj/AppIcon.iconset -o "$APP/Contents/Resources/AppIcon.i
 codesign --force --sign - --timestamp=none "$APP"
 echo "built $APP ($(lipo -archs "$APP/Contents/MacOS/MacSense"))"
 
-if [[ "${1:-}" == "--install" ]]; then
+if [[ "$PKG" == 1 ]]; then
+  VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Resources/Info.plist)
+  pkgbuild --component "$APP" --install-location /Applications --identifier "$BUNDLE_ID" \
+    --version "$VERSION" "build/MacSense-$VERSION.pkg"
+  echo "package: build/MacSense-$VERSION.pkg (unsigned; Jamf installs it as root, so no quarantine warning)"
+fi
+
+if [[ "$INSTALL" == 1 ]]; then
   DEST="$HOME/Desktop/MacSense.app"
   if [[ -e "$DEST" ]]; then
     # Only ever replace a copy of this app, never something else that happens to share the name.

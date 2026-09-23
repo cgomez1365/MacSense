@@ -32,6 +32,7 @@
   </div>
   <button type="button" class="btn" id="pause" aria-pressed="false">Pause charts</button>
   <span class="controls-note" id="controls-note">Charts show the last minute, updated every second.</span>
+  <button type="button" class="btn scan-btn" id="run-scan">Run IT scan</button>
 </nav>
 
 <section class="tiles" aria-label="Summary">
@@ -202,6 +203,31 @@
     <button type="button" class="btn" id="confirm-cancel">Cancel</button>
     <button type="button" class="btn primary" id="confirm-ok">Quit</button>
   </div>
+</dialog>
+<dialog id="it-report" class="report-dialog" aria-labelledby="it-title">
+  <header class="rd-head">
+    <div>
+      <h2 id="it-title">IT health report</h2>
+      <p class="rd-sub" id="it-sub">Scanning this Mac…</p>
+    </div>
+    <button type="button" class="btn" id="it-close">Close</button>
+  </header>
+  <div class="rd-summary" id="it-summary"></div>
+  <div class="rd-body" id="it-body">
+    <div class="rd-loading" id="it-loading">
+      <div class="rd-bar"><span></span></div>
+      <p id="it-loading-text">Checking hardware, security, restarts and crash reports. This takes about 20 seconds.</p>
+    </div>
+    <div id="it-sections"></div>
+  </div>
+  <footer class="rd-foot">
+    <p class="rd-privacy">Collects hardware, health and security settings only: no apps in use, files or browsing. Nothing leaves this Mac unless you send it.</p>
+    <div class="rd-actions">
+      <button type="button" class="btn" id="it-json" disabled>Save data</button>
+      <button type="button" class="btn" id="it-email" disabled>Email to IT</button>
+      <button type="button" class="btn primary" id="it-pdf" disabled>Save PDF</button>
+    </div>
+  </footer>
 </dialog>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <div class="tooltip" id="tooltip" role="tooltip" hidden></div>

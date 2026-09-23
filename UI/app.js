@@ -25,7 +25,7 @@
   const bridge = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.macsense;
   const state = {
     info: null, history: [], last: null, volumes: [], procs: null, icons: new Map(),
-    range: 60, paused: false, sort: 'memory', lastArrival: 0, gpuKeys: '', tempKeys: '', volumeKeys: '',
+    range: 60, paused: false, sort: 'memory', lastArrival: 0, gpuKeys: '', tempKeys: '', volumeKeys: '', itReport: null,
     sparks: { cpu: [], mem: [], net: [], gpu: [], temp: [] },
   };
 
@@ -36,6 +36,7 @@
     warning: ['M8 1.8 15 14H1Z M7.25 5.8h1.5v4.1h-1.5Z M8 11.1a.9.9 0 1 1 0 1.8.9.9 0 0 1 0-1.8Z', 'evenodd'],
     critical: ['M5.2 1.5h5.6l3.7 3.7v5.6l-3.7 3.7H5.2l-3.7-3.7V5.2Z M7.25 4.3h1.5v4.9h-1.5Z M8 10.4a.9.9 0 1 1 0 1.8.9.9 0 0 1 0-1.8Z', 'evenodd'],
     lock: ['M5 7V5a3 3 0 0 1 6 0v2h.5A1.5 1.5 0 0 1 13 8.5v5A1.5 1.5 0 0 1 11.5 15h-7A1.5 1.5 0 0 1 3 13.5v-5A1.5 1.5 0 0 1 4.5 7Zm1.5 0h3V5a1.5 1.5 0 0 0-3 0Z', 'evenodd'],
+    info: ['M8 1.5a6.5 6.5 0 1 1 0 13 6.5 6.5 0 0 1 0-13Z M7.25 7h1.5v4.5h-1.5Z M8 4.2a.9.9 0 1 1 0 1.8.9.9 0 0 1 0-1.8Z', 'evenodd'],
   };
   ICON_PATHS.serious = ICON_PATHS.warning;
 
@@ -628,6 +629,67 @@
     toastTimer = setTimeout(() => { node.className = 'toast'; }, 5000);
   }
 
+  // ---------------------------------------------------------------- IT scan
+  const IT_WORDS = { good: 'OK', warning: 'Check', critical: 'Needs attention', info: 'Info', locked: 'Admin needed' };
+  const IT_ICONS = { good: 'good', warning: 'warning', critical: 'critical', info: 'info', locked: 'lock' };
+
+  function itStatus(status) {
+    const chip = el('span', 'status tone-' + status);
+    chip.append(icon(IT_ICONS[status]), el('span', null, IT_WORDS[status] || status));
+    return chip;
+  }
+
+  function setScanBusy(busy, text) {
+    $('it-loading').hidden = !busy;
+    if (text) $('it-loading-text').textContent = text;
+    for (const id of ['it-pdf', 'it-json', 'it-email', 'run-scan']) $(id).disabled = busy || (id !== 'run-scan' && !state.itReport);
+  }
+
+  async function runItScan(kind) {
+    const dialog = $('it-report');
+    if (!dialog.open) dialog.showModal();
+    if (kind === 'itScan') { $('it-sections').replaceChildren(); $('it-summary').replaceChildren(); state.itReport = null; }
+    setScanBusy(true, kind === 'itUnlock'
+      ? 'Waiting for an administrator name and password, then scanning again.'
+      : 'Checking hardware, security, restarts and crash reports. This takes about 20 seconds.');
+    $('it-sub').textContent = kind === 'itUnlock' ? 'Unlocking crash reports…' : 'Scanning this Mac…';
+    const result = await send({ type: kind });
+    if (result.ok && result.report) state.itReport = result.report;
+    setScanBusy(false);
+    if (state.itReport) renderItReport(state.itReport);
+    else $('it-sub').textContent = result.message || 'The scan did not finish.';
+    if (result.message) toast(result.message, result.ok ? 'good' : 'critical');
+  }
+
+  function renderItReport(report) {
+    const when = new Date(report.generated).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    $('it-sub').textContent = `${report.computer} · ${report.model} · serial ${report.serial} · scanned ${when}`;
+    const s = report.summary;
+    const counts = [['critical', s.critical, 'need attention'], ['warning', s.warning, 'to check'], ['good', s.good, 'OK']];
+    if (s.locked) counts.push(['locked', s.locked, 'need an admin password']);
+    $('it-summary').replaceChildren(...counts.map(([status, count, label]) => {
+      const chip = el('span', 'rd-count tone-' + status);
+      chip.append(icon(IT_ICONS[status]), el('strong', null, String(count)), el('span', null, label));
+      return chip;
+    }));
+    $('it-sections').replaceChildren(...report.sections.map((section) => {
+      const block = el('section', 'rd-section');
+      block.append(el('h3', null, section.title), ...section.items.map((item) => {
+        const row = el('div', 'rd-row ' + item.status);
+        const body = el('div');
+        body.append(el('div', 'rd-value', item.value));
+        if (item.detail) body.append(el('div', 'rd-detail', item.detail));
+        if (item.fix) body.append(el('div', 'rd-fix', item.fix));
+        if (item.status === 'locked') {
+          body.append(actionButton('Unlock with admin password', 'btn sm primary rd-unlock', () => runItScan('itUnlock')));
+        }
+        row.append(itStatus(item.status), el('div', 'rd-title', item.title), body);
+        return row;
+      }));
+      return block;
+    }));
+  }
+
   // ---------------------------------------------------------------- liveness: say when data stops, never pretend
   function updateLive() {
     let tone = 'good', label = 'Live';
@@ -680,6 +742,14 @@
         state.sort = button.dataset.sort;
         for (const b of document.querySelectorAll('[data-sort]')) b.setAttribute('aria-checked', String(b === button));
         renderProcesses();
+      });
+    }
+    $('run-scan').addEventListener('click', () => runItScan('itScan'));
+    $('it-close').addEventListener('click', () => $('it-report').close());
+    for (const [id, type] of [['it-pdf', 'itSavePDF'], ['it-json', 'itSaveJSON'], ['it-email', 'itEmail']]) {
+      $(id).addEventListener('click', async () => {
+        const result = await send({ type });
+        if (result.message) toast(result.message, result.ok ? 'good' : 'critical');
       });
     }
     $('open-storage').addEventListener('click', () => send({ type: 'storageSettings' }).then((r) => r.ok || toast(r.message, 'critical')));

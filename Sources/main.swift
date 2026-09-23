@@ -11,6 +11,9 @@ struct LaunchOptions {
     var size: NSSize?            // --size 1280x860
     var inspectable = false      // --inspect: allow Safari's Web Inspector
     var verbose = false          // --verbose: log every sample on its way to the page
+    var itScan = false           // --it-scan: print the IT health report as JSON and exit (for Jamf scripts)
+    var itPDFPath: String?       // --it-pdf PATH: write the IT report as a PDF and exit, no window
+    var selfTest = false         // --selftest: check that the window can be dragged by its header
 
     init(_ arguments: [String]) {
         var remaining = arguments.dropFirst().makeIterator()
@@ -27,6 +30,9 @@ struct LaunchOptions {
                 if parts.count == 2 { size = NSSize(width: parts[0], height: parts[1]) }
             case "--inspect": inspectable = true
             case "--verbose": verbose = true
+            case "--it-scan": itScan = true
+            case "--it-pdf": itPDFPath = remaining.next()
+            case "--selftest": selfTest = true
             default: break   // Finder and `open` add flags of their own
             }
         }
@@ -42,9 +48,14 @@ if options.smcProbe {
     Diagnostics.smcProbe()
     exit(0)
 }
+if options.itScan {
+    let report = ITScan.run()
+    if let data = ReportFiles.json(report) { print(String(decoding: data, as: UTF8.self)) }
+    exit(0)
+}
 
 let application = NSApplication.shared
 let delegate = AppDelegate(options: options)
 application.delegate = delegate
-application.setActivationPolicy(.regular)
+application.setActivationPolicy(options.itPDFPath == nil ? .regular : .accessory)
 application.run()
