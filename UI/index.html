@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="color-scheme" content="dark">
+<title>MacSense</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<header class="titlebar">
+  <div class="brand">
+    <span class="brand-mark-wrap"><span class="brand-mark" aria-hidden="true">M</span></span>
+    <span class="brand-name">MACSENSE</span>
+    <span class="brand-chip">NITRO</span>
+  </div>
+  <div class="machine">
+    <span class="machine-line" id="machine-line">Reading this Mac…</span>
+    <span id="uptime"></span>
+    <span class="live live-wait" id="live" role="status"><span class="live-dot" aria-hidden="true"></span><span id="live-text">Starting…</span></span>
+  </div>
+</header>
+
+<div class="preview-banner" id="preview" hidden>Preview: this page isn't running inside MacSense.app, so its buttons do nothing.</div>
+
+<nav class="controls" aria-label="Chart controls">
+  <div class="segmented" role="radiogroup" aria-label="Time range">
+    <button type="button" role="radio" data-range="60" aria-checked="true">1 min</button>
+    <button type="button" role="radio" data-range="300" aria-checked="false">5 min</button>
+    <button type="button" role="radio" data-range="900" aria-checked="false">15 min</button>
+  </div>
+  <button type="button" class="btn" id="pause" aria-pressed="false">Pause charts</button>
+  <span class="controls-note" id="controls-note">Charts show the last minute, updated every second.</span>
+</nav>
+
+<section class="tiles" aria-label="Summary">
+  <article class="tile">
+    <h3 class="tile-label">CPU</h3>
+    <p class="tile-value" id="kpi-cpu">—</p>
+    <p class="tile-sub" id="kpi-cpu-sub">Measuring…</p>
+    <canvas class="spark" id="spark-cpu" aria-hidden="true"></canvas>
+  </article>
+  <article class="tile">
+    <h3 class="tile-label">Memory</h3>
+    <p class="tile-value" id="kpi-mem">—</p>
+    <span class="status" id="kpi-mem-sub">—</span>
+    <canvas class="spark" id="spark-mem" aria-hidden="true"></canvas>
+  </article>
+  <article class="tile">
+    <h3 class="tile-label">Network</h3>
+    <p class="tile-value" id="kpi-net">—</p>
+    <p class="tile-sub" id="kpi-net-sub">Measuring…</p>
+    <canvas class="spark" id="spark-net" aria-hidden="true"></canvas>
+  </article>
+  <article class="tile">
+    <h3 class="tile-label">Storage</h3>
+    <p class="tile-value" id="kpi-disk">—</p>
+    <p class="tile-sub" id="kpi-disk-sub">Reading volumes…</p>
+    <div class="meter sm" id="kpi-disk-meter"><span></span></div>
+  </article>
+  <article class="tile">
+    <h3 class="tile-label">Graphics</h3>
+    <p class="tile-value" id="kpi-gpu">—</p>
+    <p class="tile-sub" id="kpi-gpu-sub">—</p>
+    <canvas class="spark" id="spark-gpu" aria-hidden="true"></canvas>
+  </article>
+  <article class="tile">
+    <h3 class="tile-label">Temperature</h3>
+    <p class="tile-value" id="kpi-temp">—</p>
+    <p class="tile-sub" id="kpi-temp-sub">—</p>
+    <canvas class="spark" id="spark-temp" aria-hidden="true"></canvas>
+  </article>
+</section>
+
+<main class="grid">
+
+  <article class="card wide" aria-labelledby="net-title">
+    <header class="card-head">
+      <div class="card-title">
+        <h2 id="net-title">Network</h2>
+        <p class="card-sub" id="net-sub">Measuring…</p>
+      </div>
+      <div class="legend" id="net-legend"></div>
+      <button type="button" class="link" data-table-for="net" aria-pressed="false">Table</button>
+    </header>
+    <div class="stat-row">
+      <div class="stat"><span class="stat-label"><span class="swatch" id="net-key-down"></span>Download now</span><span class="stat-value" id="net-down">—</span></div>
+      <div class="stat"><span class="stat-label"><span class="swatch" id="net-key-up"></span>Upload now</span><span class="stat-value" id="net-up">—</span></div>
+      <div class="stat"><span class="stat-label">Peak download</span><span class="stat-value sm" id="net-peak-down">—</span></div>
+      <div class="stat"><span class="stat-label">Peak upload</span><span class="stat-value sm" id="net-peak-up">—</span></div>
+      <div class="stat"><span class="stat-label">Downloaded since opening</span><span class="stat-value sm" id="net-total-down">—</span></div>
+      <div class="stat"><span class="stat-label">Uploaded since opening</span><span class="stat-value sm" id="net-total-up">—</span></div>
+    </div>
+    <div class="chart" id="chart-net"></div>
+    <div class="ifaces" id="net-ifaces"></div>
+  </article>
+
+  <article class="card" aria-labelledby="cpu-title">
+    <header class="card-head">
+      <div class="card-title">
+        <h2 id="cpu-title">CPU</h2>
+        <p class="card-sub" id="cpu-sub">Measuring…</p>
+      </div>
+      <div class="legend" id="cpu-legend"></div>
+      <button type="button" class="link" data-table-for="cpu" aria-pressed="false">Table</button>
+    </header>
+    <div class="chart" id="chart-cpu"></div>
+    <div class="section-head"><h3 class="section-label">Each thread, right now<span id="threads-note"></span></h3></div>
+    <div class="threads" id="cpu-threads" role="list" aria-label="Load on each CPU thread"></div>
+    <div class="thread-axis" id="cpu-thread-axis" aria-hidden="true"></div>
+  </article>
+
+  <article class="card" aria-labelledby="mem-title">
+    <header class="card-head">
+      <div class="card-title">
+        <h2 id="mem-title">Memory</h2>
+        <p class="card-sub" id="mem-sub">Measuring…</p>
+      </div>
+      <span class="status" id="mem-pressure">—</span>
+      <button type="button" class="link" data-table-for="mem" aria-pressed="false">Table</button>
+    </header>
+    <div class="stack" id="mem-stack" role="img" aria-label="Memory breakdown"></div>
+    <ul class="stack-legend" id="mem-legend"></ul>
+    <div class="chart" id="chart-mem"></div>
+    <div class="band-legend" aria-hidden="true">
+      <span>Pressure strip:</span>
+      <span><i id="band-good"></i>Normal</span>
+      <span><i id="band-warning"></i>Warning</span>
+      <span><i id="band-critical"></i>Critical</span>
+    </div>
+    <div class="swap-row">
+      <span>Swap</span>
+      <div class="meter sm" id="mem-swap-meter"><span></span></div>
+      <span class="num" id="mem-swap-text">—</span>
+    </div>
+    <p class="explain">"Used" is app memory, wired and compressed memory, the same as Activity Monitor. Cached files aren't counted as used, because macOS gives that memory back as soon as an app needs it. The pressure strip is macOS's own verdict: green means you have room.</p>
+  </article>
+
+  <article class="card" aria-labelledby="storage-title">
+    <header class="card-head">
+      <div class="card-title">
+        <h2 id="storage-title">Storage</h2>
+        <p class="card-sub" id="storage-sub">Reading volumes…</p>
+      </div>
+      <button type="button" class="link" id="open-storage">Manage storage…</button>
+    </header>
+    <ul class="volumes" id="volumes"></ul>
+  </article>
+
+  <article class="card" aria-labelledby="gpu-title">
+    <header class="card-head">
+      <div class="card-title">
+        <h2 id="gpu-title">Graphics &amp; thermals</h2>
+        <p class="card-sub" id="gpu-sub">Measuring…</p>
+      </div>
+      <div class="legend" id="gpu-legend"></div>
+      <button type="button" class="link" data-table-for="gpu" aria-pressed="false">Table</button>
+    </header>
+    <div class="chart" id="chart-gpu"></div>
+    <div class="thermals">
+      <div class="thermal" id="th-cpu"><div class="k">CPU temperature</div><div class="v">—</div><div class="s"></div></div>
+      <div class="thermal" id="th-gpu"><div class="k">GPU temperature</div><div class="v">—</div><div class="s"></div></div>
+      <div class="thermal" id="th-fan"><div class="k">Fan</div><div class="v">—</div><div class="meter sm"><span></span></div><div class="s"></div></div>
+      <div class="thermal" id="th-state"><div class="k">macOS thermal state</div><div class="v"><span class="status" id="th-state-chip">—</span></div><div class="s">Throttles past Fair</div></div>
+    </div>
+    <div class="section-head">
+      <h3 class="section-label">Temperatures</h3>
+      <div class="legend" id="temp-legend"></div>
+      <button type="button" class="link" data-table-for="temp" aria-pressed="false">Table</button>
+    </div>
+    <div class="chart" id="chart-temp"></div>
+  </article>
+
+  <article class="card wide" aria-labelledby="procs-title">
+    <header class="card-head">
+      <div class="card-title">
+        <h2 id="procs-title">Apps &amp; processes</h2>
+        <p class="card-sub" id="procs-sub">Reading processes…</p>
+      </div>
+      <div class="segmented" role="radiogroup" aria-label="Sort by">
+        <button type="button" role="radio" data-sort="memory" aria-checked="true">Memory</button>
+        <button type="button" role="radio" data-sort="cpu" aria-checked="false">CPU</button>
+      </div>
+      <button type="button" class="link" id="open-am">Open Activity Monitor</button>
+    </header>
+    <table class="procs">
+      <colgroup><col><col class="c-mem"><col class="c-cpu"><col class="c-act"></colgroup>
+      <thead><tr><th scope="col">Name</th><th scope="col" class="num">Memory</th><th scope="col" class="num">CPU</th><th scope="col" class="num"><span class="sr-only">Actions</span></th></tr></thead>
+      <tbody id="procs-body"></tbody>
+    </table>
+  </article>
+
+</main>
+
+<footer class="footer">MacSense <span id="app-version"></span>. It reads this Mac directly, has no server and opens no port, and nothing it sees leaves this computer.</footer>
+
+<dialog id="confirm" aria-labelledby="confirm-title" aria-describedby="confirm-body">
+  <h2 id="confirm-title">Quit?</h2>
+  <p id="confirm-body"></p>
+  <div class="dialog-actions">
+    <button type="button" class="btn" id="confirm-cancel">Cancel</button>
+    <button type="button" class="btn primary" id="confirm-ok">Quit</button>
+  </div>
+</dialog>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="tooltip" id="tooltip" role="tooltip" hidden></div>
+
+<script src="charts.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
